@@ -1,0 +1,49 @@
+# --- Config ---
+$wallpaperUrl  = "https://raw.githubusercontent.com/skandhan-cd/WallpaperDocs/main/CDDesktopWallpaperImg.png"
+$wallpaperDir  = "C:\ProgramData\FleetMDM\Wallpaper"
+$wallpaperPath = Join-Path $wallpaperDir "fleet_wallpaper.png"
+$taskName      = "Fleet_Wallpaper_Enforcer"
+ 
+# --- Ensure storage folder exists ---
+if (-not (Test-Path $wallpaperDir)) {
+    New-Item -Path $wallpaperDir -ItemType Directory -Force | Out-Null
+}
+ 
+# --- Download wallpaper (overwrite if exists) ---
+try {
+    Invoke-WebRequest -Uri $wallpaperUrl -OutFile $wallpaperPath -UseBasicParsing -ErrorAction Stop
+} catch {
+    Write-Output "❌ Failed to download wallpaper: $($_.Exception.Message)"
+    exit 1
+}
+ 
+# --- Script that will be run at user logon ---
+$userScript = @'
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Wallpaper {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+}
+"@
+$SPI_SETDESKWALLPAPER = 20
+$SPIF_UPDATEINIFILE   = 0x01
+$SPIF_SENDCHANGE      = 0x02
+[Wallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, "C:\ProgramData\FleetMDM\Wallpaper\fleet_wallpaper.png", $SPIF_UPDATEINIFILE -bor $SPIF_SENDCHANGE) | Out-Null
+'@
+ 
+# Save helper script
+$userScriptPath = Join-Path $wallpaperDir "ApplyWallpaper.ps1"
+Set-Content -Path $userScriptPath -Value $userScript -Force -Encoding UTF8
+ 
+# --- Create Scheduled Task for all users at logon ---
+$action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$userScriptPath`""
+$trigger   = New-ScheduledTaskTrigger -AtLogOn
+$principal = New-ScheduledTaskPrincipal -GroupId "Users" -RunLevel Limited
+$settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+ 
+$task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings
+ 
+# Register (overwrite if exists)
+Register-ScheduledTask -TaskName $taskName -InputObject $task -Force | Out-Null
