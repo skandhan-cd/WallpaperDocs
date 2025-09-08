@@ -1,5 +1,5 @@
 # --- Config ---
-$wallpaperUrl  = "https://raw.githubusercontent.com/skandhan-cd/WallpaperDocs/main/CDDesktopWallpaperImg.png"
+$wallpaperUrl  = "https://raw.githubusercontent.com/skandhan-cd/WallpaperDocs/main/WallpaperImg/DesktopWallpaper/Wall%20paper%20CD%201.jpg"
 $wallpaperDir  = "C:\ProgramData\FleetMDM\Wallpaper"
 $wallpaperPath = Join-Path $wallpaperDir "fleet_wallpaper.png"
 $taskName      = "Fleet_Wallpaper_Enforcer"
@@ -46,4 +46,5 @@ $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGo
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings
  
 # Register (overwrite if exists)
+
 Register-ScheduledTask -TaskName $taskName -InputObject $task -Force | Out-Null
